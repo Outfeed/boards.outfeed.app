@@ -326,6 +326,10 @@ export default {
                                 if (activeSection === 'overview') {
                                     el.setInnerContent(`
                                         <article data-full>
+                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                                <h2 id="ui-overview-title" style="margin: 0;">Overview</h2>
+                                                <span id="vault-status" style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.6;"></span>
+                                            </div>
                                             <table>
                                                 <tbody>
                                                     <tr><th style="width: 200px;">Board Name</th><td>${targetEntity.name}</td></tr>
@@ -336,9 +340,6 @@ export default {
                                                     <tr><th>Client Secret</th><td><input type="password" id="vault-client-secret" class="vault-input" placeholder="••••••••" style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
                                                 </tbody>
                                             </table>
-                                            <div style="margin-top: 1rem; text-align: right; font-size: 0.75rem; color: var(--text-muted); min-height: 1rem;">
-                                                <span id="vault-status"></span>
-                                            </div>
                                         </article>
                                     `, { html: true });
                                 }
