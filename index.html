@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Outfeed Boards Console</title>
+    <style>
+        :root {
+            color-scheme: light dark;
+            --bg-base: #f9fafb;
+            --bg-panel: #ffffff;
+            --bg-active: #f3f4f6;
+            --bg-selected: #e0e7ff;
+            --border: #e5e7eb;
+            --text-main: #111827;
+            --text-muted: #6b7280;
+            --accent: #4f46e5;
+            --font-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+            --radius: 6px;
+            --gap: 1rem;
+            --btn-bg: #111827;
+            --btn-text: #ffffff;
+            --btn-border: transparent;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --bg-base: #000;
+                --bg-panel: #0a0a0a;
+                --bg-active: #171717;
+                --bg-selected: #262626;
+                --border: #262626;
+                --text-main: #ededed;
+                --text-muted: #a3a3a3;
+                --btn-bg: #262626;
+                --btn-text: #ededed;
+                --btn-border: #404040;
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: var(--bg-base);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        nav,
+        aside {
+            width: 260px;
+            min-width: 150px;
+            max-width: 50vw;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            flex-shrink: 0;
+            padding: 0.75rem 0.5rem;
+        }
+
+        div[data-resize] {
+            width: 8px;
+            margin: 0 -4px;
+            cursor: col-resize;
+            z-index: 10;
+        }
+
+        main {
+            flex: 1;
+            padding: calc(var(--gap) * 2);
+            overflow-y: auto;
+        }
+
+        a {
+            padding: 0.5rem 0.75rem;
+            margin-bottom: 0.25rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            text-decoration: none;
+            color: inherit;
+        }
+
+        a:hover {
+            background: var(--bg-active);
+        }
+
+        a[aria-current] {
+            background: var(--bg-selected);
+            color: var(--accent);
+            font-weight: 500;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            a[aria-current] {
+                color: var(--text-main);
+            }
+        }
+
+        a::after {
+            content: '▶';
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        a[aria-current]::after {
+            opacity: 1;
+            color: inherit;
+        }
+
+        h2 {
+            font-size: 1.125rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+
+        article {
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: calc(var(--radius) + 2px);
+            padding: 1.5rem;
+            max-width: 800px;
+            margin-top: calc(var(--gap) * 2);
+        }
+
+        article[data-full] {
+            padding: 0;
+            overflow-x: auto;
+        }
+
+        label {
+            display: grid;
+            grid-template-columns: 180px 1fr;
+            align-items: center;
+            gap: var(--gap);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            margin-bottom: var(--gap);
+            color: var(--text-muted);
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg-base);
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            border-radius: var(--radius);
+            font-family: var(--font-mono);
+            font-size: 0.875rem;
+        }
+
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        button {
+            background: var(--btn-bg);
+            color: var(--btn-text);
+            border: 1px solid var(--btn-border);
+            padding: 0.6rem 1.2rem;
+            border-radius: var(--radius);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.8125rem;
+        }
+
+        th,
+        td {
+            padding: 0.75rem var(--gap);
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--bg-active);
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        .form-actions {
+            margin-top: calc(var(--gap) * 2);
+            display: flex;
+            gap: var(--gap);
+            padding-left: calc(180px + var(--gap));
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+
+<body>
+    <nav>
+        <!-- Injected dynamically by JS -->
+    </nav>
+    <div data-resize="nav"></div>
+
+    <aside>
+        <a data-id="overview">Overview</a>
+        <a data-id="extract">Sourcing (MLS)</a>
+        <a data-id="transform">Smart Feeds (Keys)</a>
+        <a data-id="load">Edge Storage (D1)</a>
+    </aside>
+    <div data-resize="aside"></div>
+
+    <main>
+        <section id="view-overview">
+            <h2 id="ui-overview-title">Overview</h2>
+            <div id="overview-content"></div>
+        </section>
+        <section id="view-extract">
+            <h2 id="ui-extract-title">Sourcing (MLS)</h2>
+
+            <article>
+                <label>
+                    <span>Source Board (MLS)</span>
+                    <select id="cfg-board-id" style="padding: 0.5rem; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-active); color: var(--text-main);">
+                        <!-- Injected by HTMLRewriter -->
+                    </select>
+                </label>
+
+                <label>
+                    <span>Sync Interval</span>
+                    <select id="cfg-sync-interval"
+                        style="padding: 0.5rem; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-active); color: var(--text-main);">
+                        <option value="1">Hourly</option>
+                        <option value="12">Twice a Day</option>
+                        <option value="24">Daily</option>
+                        <option value="0">Paused (Manual Only)</option>
+                    </select>
+                </label>
+
+                <hr style="border: none; border-top: 1px solid var(--border); margin: 1.5rem 0;">
+
+                <label>
+                    <span>Target Resource</span>
+                    <select style="padding: 0.5rem; border-radius: var(--radius); border: 1px solid var(--border); background: var(--bg-active); color: var(--text-main);">
+                        <option value="Property">Property</option>
+                        <option value="Member">Member</option>
+                        <option value="Office">Office</option>
+                    </select>
+                </label>
+
+                <label>
+                    <span>OData Query Filter ($filter)</span>
+                    <input id="cfg-odata-filter" type="text" placeholder="StandardStatus eq 'Active'">
+                </label>
+
+                <label>
+                    <span>Batch Size ($top)</span>
+                    <input type="number" value="100" min="1" max="1000">
+                </label>
+
+                <div class="form-actions" style="justify-content: space-between; margin-top: 2rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <button id="btn-save-cfg"
+                            style="background: var(--bg-selected); color: var(--text-main); border: 1px solid var(--border);">Save
+                            Configuration</button>
+                        <span id="cfg-status-msg" style="color: var(--text-muted); font-size: 0.875rem;"></span>
+                    </div>
+                    <div style="display: flex; gap: 1rem;">
+                        <button id="btn-test">Test</button>
+                        <button id="btn-extract">Run Full Extraction</button>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section id="view-transform" hidden>
+            <h2 id="ui-transform-title">Smart Feeds (Keys)</h2>
+
+            <article>
+                <label><span>id (Primary Key)</span><input type="text" value="ListingKey"></label>
+                <label><span>status</span><input type="text" value="StandardStatus"></label>
+                <label><span>price</span><input type="text" value="ListPrice"></label>
+                <label><span>address</span><input type="text" value="UnparsedAddress"></label>
+                <label><span>city</span><input type="text" value="City"></label>
+                <label><span>bedrooms</span><input type="text" value="BedroomsTotal"></label>
+                <label><span>bathrooms</span><input type="text" value="BathroomsFull"></label>
+                <label><span>sqft</span><input type="text" value="LivingArea"></label>
+
+                <div class="form-actions">
+                    <button id="btn-save-mapping">Save Mapping</button>
+                </div>
+            </article>
+        </section>
+
+        <section id="view-load" hidden>
+            <h2 id="ui-load-title">Edge Storage (D1)</h2>
+
+            <article data-full>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Photo</th>
+                            <th>ID</th>
+                            <th>Status</th>
+                            <th>Price</th>
+                            <th>Address</th>
+                            <th>City</th>
+                            <th>Beds/Baths</th>
+                            <th>SqFt</th>
+                            <th>Agent</th>
+                            <th>Office</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ui-data-table">
+                        <tr>
+                            <td colspan="10" class="empty-state">Loading records...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </article>
+        </section>
+    </main>
+
+    <script type="module">
+        window.__BOARDS__ = null; // Replaced by Cloudflare Worker
+
+        class Console {
+            constructor() {
+                const data = window.__DATA__ || { clients: [], boards: [] };
+                this.clients = {};
+                (data.clients || []).forEach(c => this.clients[c.id] = c);
+
+                const parts = window.location.pathname.split('/').filter(Boolean);
+                this.state = { 
+                    board: parts[0] || 'trreb', 
+                    section: ['overview', 'extract', 'transform', 'load'].includes(parts[1]) ? parts[1] : 'overview' 
+                };
+
+                this.initResizers();
+                this.bindEvents();
+                
+                if (this.state.section === 'load') {
+                    this.loadData();
+                }
+            }
+
+            async apiFetch(url, options = {}) {
+                const res = await fetch(url, options);
+                try {
+                    const res = await fetch(url, { ...options, headers: { 'Content-Type': 'application/json', ...options.headers } });
+                    return await res.json();
+                } catch (e) {
+                    return { success: false, error: e.message };
+                }
+            }
+
+            bindEvents() {
+                const btnExtract = document.getElementById('btn-extract');
+                if (btnExtract) {
+                    btnExtract.addEventListener('click', async () => {
+                        const originalText = btnExtract.textContent;
+                        btnExtract.textContent = 'Running...';
+                        btnExtract.disabled = true;
+                        
+                        const res = await this.apiFetch(`/${this.state.board}/extract/run`, { method: 'POST' });
+                        alert(res.success ? 'Extraction successful!' : `Error: ${res.error}`);
+                        
+                        btnExtract.textContent = originalText;
+                        btnExtract.disabled = false;
+                    });
+                }
+
+                const btnSaveCfg = document.getElementById('btn-save-cfg');
+                if (btnSaveCfg) {
+                    btnSaveCfg.addEventListener('click', async () => {
+                        const statusMsg = document.getElementById('cfg-status-msg');
+                        const board_id = document.getElementById('cfg-board-id').value;
+                        const odata_filter = document.getElementById('cfg-odata-filter').value;
+                        const sync_interval_hours = document.getElementById('cfg-sync-interval').value;
+
+                        btnSaveCfg.disabled = true;
+                        statusMsg.textContent = 'Saving...';
+                        statusMsg.style.color = 'var(--text-muted)';
+
+                        try {
+                            await this.apiFetch(`/${this.state.client}/extract/config`, {
+                                method: 'POST',
+                                body: JSON.stringify({ board_id, odata_filter, sync_interval_hours })
+                            });
+
+                            statusMsg.textContent = 'Configuration Saved!';
+                            statusMsg.style.color = 'green';
+                            setTimeout(() => { if (statusMsg.textContent === 'Configuration Saved!') statusMsg.textContent = ''; }, 3000);
+                        } catch (e) {
+                            statusMsg.textContent = 'Failed to save.';
+                            statusMsg.style.color = 'red';
+                        }
+                        btnSaveCfg.disabled = false;
+                    });
+                }
+
+                const btnSaveMapping = document.getElementById('btn-save-mapping');
+                if (btnSaveMapping) {
+                    btnSaveMapping.addEventListener('click', async () => {
+                        const statusMsg = document.getElementById('map-status-msg');
+                        btnSaveMapping.disabled = true;
+                        statusMsg.textContent = 'Saving mapping...';
+                        statusMsg.style.color = 'var(--text-muted)';
+
+                        // Simulate API call to save mapping
+                        setTimeout(() => {
+                            statusMsg.textContent = 'Mapping Saved Successfully!';
+                            statusMsg.style.color = 'green';
+                            btnSaveMapping.disabled = false;
+                            setTimeout(() => { statusMsg.textContent = ''; }, 3000);
+                        }, 1000);
+                    });
+                }
+            }
+
+            async loadData() {
+                const tbody = document.getElementById('ui-data-table');
+                if (!tbody) return;
+
+                tbody.innerHTML = `<tr><td colspan="9" class="empty-state">Fetching Board Database...</td></tr>`;
+
+                try {
+                    const res = await this.apiFetch(`/${this.state.board}/load/data`);
+                    if (!res.success || res.data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="9" class="empty-state">No records found. Run extraction to populate.</td></tr>`;
+                        return;
+                    }
+
+                    tbody.innerHTML = res.data.map(row => `
+                        <tr>
+                            <td style="padding: 0.5rem;"><img src="${row.image_url || 'https://placehold.co/40x40?text=No+Photo'}" style="width: 48px; height: 32px; object-fit: crop; border-radius: 4px; background: var(--bg-active);"></td>
+                            <td style="font-family: var(--font-mono);">${row.id}</td>
+                            <td>${row.status}</td>
+                            <td>$${row.price ? row.price.toLocaleString() : '0'}</td>
+                            <td>${row.address}</td>
+                            <td>${row.city}</td>
+                            <td>${row.bedrooms} / ${row.bathrooms}</td>
+                            <td>${row.sqft ? row.sqft.toLocaleString() : 'N/A'}</td>
+                            <td style="font-family: var(--font-mono); color: var(--text-muted);">${row.agent_id || '-'}</td>
+                            <td style="font-family: var(--font-mono); color: var(--text-muted);">${row.office_id || '-'}</td>
+                        </tr>
+                    `).join('');
+                } catch (err) {
+                    tbody.innerHTML = `<tr><td colspan="10" class="empty-state" style="color: var(--error);">Error: ${err.message}</td></tr>`;
+                }
+            }
+
+            initResizers() {
+                let active = null;
+                document.querySelectorAll('div[data-resize]').forEach(resizer => {
+                    const el = document.querySelector(resizer.dataset.resize);
+                    const saved = localStorage.getItem(`w-${resizer.dataset.resize}`);
+                    if (saved) el.style.width = saved;
+
+                    resizer.addEventListener('mousedown', e => {
+                        active = { el, key: `w-${resizer.dataset.resize}`, startX: e.clientX, w: el.offsetWidth };
+                        document.body.style.cursor = 'col-resize';
+                    });
+                });
+
+                document.addEventListener('mousemove', e => {
+                    if (active) active.el.style.width = `${active.w + (e.clientX - active.startX)}px`;
+                });
+
+                document.addEventListener('mouseup', () => {
+                    if (active) {
+                        localStorage.setItem(active.key, active.el.style.width);
+                        document.body.style.cursor = '';
+                        active = null;
+                    }
+                });
+            }
+
+        }
+
+        new Console();
+    </script>
+</body>
+
+</html>

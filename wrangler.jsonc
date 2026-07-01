@@ -1,0 +1,50 @@
+{
+    "$schema": "node_modules/wrangler/config-schema.json",
+    "name": "boards-outfeed-app",
+    "main": "worker.mjs",
+    "compatibility_date": "2024-04-03",
+    "account_id": "427b1494263707483abef83f859bb065",
+    "observability": {
+        "enabled": true
+    },
+    "workers_dev": false,
+    "routes": [
+        {
+            "pattern": "boards.outfeed.app",
+            "custom_domain": true
+        }
+    ],
+    "r2_buckets": [
+        {
+            "binding": "RAW_DATA_LAKE",
+            "bucket_name": "mls-data-lake"
+        }
+    ],
+    "d1_databases": [
+        {
+            "binding": "mls_data",
+            "database_name": "mls_data",
+            "database_id": "497e0286-92b8-43aa-bf19-afea51b062cb"
+        }
+    ],
+    "triggers": {
+        "crons": [
+            "0 * * * *"
+        ]
+    },
+    "rules": [
+        {
+            "type": "Text",
+            "globs": [
+                "**/*.html"
+            ],
+            "fallthrough": true
+        }
+    ],
+    "pipelines": [
+        {
+            "binding": "MLS_PIPELINE",
+            "pipeline": "mls-data-stream"
+        }
+    ]
+}

@@ -1,0 +1,7 @@
+node_modules/
+.wrangler/
+.dev.vars
+dist/
+package-lock.json
+*.log
+.DS_Store
