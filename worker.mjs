@@ -326,8 +326,7 @@ export default {
                                 if (activeSection === 'overview') {
                                     el.setInnerContent(`
                                         <article data-full>
-                                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                                                <h2 id="ui-overview-title" style="margin: 0;">Overview</h2>
+                                            <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem; height: 1rem;">
                                                 <span id="vault-status" style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.6;"></span>
                                             </div>
                                             <table>
