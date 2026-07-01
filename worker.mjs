@@ -74,13 +74,44 @@ async function runExtraction(env, boardId) {
             .bind(accessToken, newExpires.toISOString(), boardId).run();
     }
 
-    // 3. MOCK DATA (Fallback to Mock for now)
-    const mockListings = [
-        { id: `${boardId.toUpperCase()}-${Math.floor(Math.random() * 100000)}`, status: 'Active', price: 850000, address: '123 Spadina Ave', city: 'Toronto', bedrooms: 3, bathrooms: 2, sqft: 1500, agent_id: 'A123', office_id: 'O999', image_url: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80' },
-        { id: `${boardId.toUpperCase()}-${Math.floor(Math.random() * 100000)}`, status: 'Pending', price: 620000, address: '456 King St W', city: 'Toronto', bedrooms: 2, bathrooms: 1, sqft: 900, agent_id: 'A456', office_id: 'O888', image_url: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80' },
-        { id: `${boardId.toUpperCase()}-${Math.floor(Math.random() * 100000)}`, status: 'Active', price: 1200000, address: '789 Queen St E', city: 'Toronto', bedrooms: 4, bathrooms: 3, sqft: 2200, agent_id: 'A123', office_id: 'O999', image_url: 'https://images.unsplash.com/photo-1512917774080-9991f1c4c750?auto=format&fit=crop&w=800&q=80' },
-        { id: `CRMLS-${Math.floor(Math.random() * 100000)}`, status: 'Active', price: 450000, address: '123 Oil St', city: 'Bakersfield', bedrooms: 3, bathrooms: 2, sqft: 1800, agent_id: 'B999', office_id: 'O111', image_url: 'https://images.unsplash.com/photo-1580587767526-cf3671a050d4?auto=format&fit=crop&w=800&q=80' }
-    ];
+    // 3. LIVE EXTRACTION: Fetch from the real RESO API
+    console.log(`[ETL] Fetching live data from ${board.reso_url}...`);
+    
+    // We'll target the 'Property' resource by default
+    const propertyUrl = `${board.reso_url}Property?$top=10`;
+    
+    const res = await fetch(propertyUrl, {
+        headers: {
+            'Authorization': `Bearer ${accessToken}`,
+            'Accept': 'application/json'
+        }
+    });
+
+    if (!res.ok) {
+        const errorText = await res.text();
+        console.error(`[ETL] RESO API Error: ${errorText}`);
+        throw new Error(`RESO API failed with status ${res.status}`);
+    }
+
+    const odata = await res.json();
+    const rawListings = odata.value || [];
+
+    console.log(`[ETL] Extracted ${rawListings.length} records from ${boardId}`);
+
+    // 4. TRANSFORM & LOAD (Mapping the RESO fields to our internal schema)
+    const processedListings = rawListings.map(listing => ({
+        id: listing.ListingKey || listing.ListingId,
+        status: listing.StandardStatus || 'Unknown',
+        price: listing.ListPrice || 0,
+        address: listing.UnparsedAddress || 'No Address',
+        city: listing.City || 'Unknown',
+        bedrooms: listing.BedroomsTotal || 0,
+        bathrooms: listing.BathroomsFull || 0,
+        sqft: listing.LivingArea || 0,
+        agent_id: listing.ListAgentKey || 'N/A',
+        office_id: listing.ListOfficeKey || 'N/A',
+        image_url: (listing.Media && listing.Media[0]) ? listing.Media[0].MediaURL : 'https://placehold.co/600x400?text=No+Photo'
+    }));
     
     // 2. PIPE to Data Lake (Cloudflare Pipelines)
     if (env.MLS_PIPELINE && typeof env.MLS_PIPELINE.send === 'function') {
@@ -315,30 +346,22 @@ export default {
                                 }
                             }
                         })
-                        .on(`h2#ui-${activeSection}-title`, {
-                            element(el) {
-                                const map = { overview: 'Overview', extract: 'Extract', transform: 'Transform', load: 'Load' };
-                                el.setInnerContent(`${map[activeSection] || 'Overview'}`);
-                            }
-                        })
                         .on('div#overview-content', {
                             element(el) {
                                 if (activeSection === 'overview') {
                                     el.setInnerContent(`
-                                        <article data-full>
-                                            <div style="display: flex; justify-content: flex-end; margin-bottom: 0.5rem; height: 1rem;">
-                                                <span id="vault-status" style="font-size: 0.7rem; color: var(--text-muted); opacity: 0.6;"></span>
-                                            </div>
-                                            <table>
+                                        <article data-full style="padding: 0;">
+                                            <table style="width: 100%; border-collapse: collapse;">
                                                 <tbody>
-                                                    <tr><th style="width: 200px;">Board Name</th><td>${targetEntity.name}</td></tr>
-                                                    <tr><th>Short Name</th><td>${targetEntity.short_name}</td></tr>
-                                                    <tr><th>RESO API URL</th><td><input type="text" id="vault-reso-url" value="${targetEntity.reso_url}" class="vault-input" style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
-                                                    <tr><th>Auth Endpoint</th><td><input type="text" id="vault-auth-endpoint" value="${targetEntity.auth_endpoint || ''}" class="vault-input" placeholder="https://..." style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
-                                                    <tr><th>Client ID</th><td><input type="text" id="vault-client-id" value="${targetEntity.client_id || ''}" class="vault-input" placeholder="ID..." style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
-                                                    <tr><th>Client Secret</th><td><input type="password" id="vault-client-secret" class="vault-input" placeholder="••••••••" style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th style="width: 200px; text-align: left; padding: 0.75rem var(--gap); border-bottom: 1px solid var(--border);">Board Name</th><td style="padding: 0.75rem var(--gap); border-bottom: 1px solid var(--border);">${targetEntity.name}</td></tr>
+                                                    <tr><th style="text-align: left; padding: 0.75rem var(--gap); border-bottom: 1px solid var(--border);">Short Name</th><td style="padding: 0.75rem var(--gap); border-bottom: 1px solid var(--border);">${targetEntity.short_name}</td></tr>
+                                                    <tr><th style="text-align: left; padding: 0.75rem var(--gap); border-bottom: 1px solid var(--border);">RESO API URL</th><td style="padding: 0; border-bottom: 1px solid var(--border);"><input type="text" id="vault-reso-url" value="${targetEntity.reso_url}" class="vault-input" style="border:none; background:transparent; width:100%; padding: 0.75rem var(--gap); font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th style="text-align: left; padding: 0.75rem var(--gap); border-bottom: 1px solid var(--border);">Auth Endpoint</th><td style="padding: 0; border-bottom: 1px solid var(--border);"><input type="text" id="vault-auth-endpoint" value="${targetEntity.auth_endpoint || ''}" class="vault-input" placeholder="https://..." style="border:none; background:transparent; width:100%; padding: 0.75rem var(--gap); font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th style="text-align: left; padding: 0.75rem var(--gap); border-bottom: 1px solid var(--border);">Client ID</th><td style="padding: 0; border-bottom: 1px solid var(--border);"><input type="text" id="vault-client-id" value="${targetEntity.client_id || ''}" class="vault-input" placeholder="ID..." style="border:none; background:transparent; width:100%; padding: 0.75rem var(--gap); font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th style="text-align: left; padding: 0.75rem var(--gap); border-bottom: 1px solid var(--border);">Client Secret</th><td style="padding: 0; border-bottom: 1px solid var(--border);"><input type="password" id="vault-client-secret" class="vault-input" placeholder="••••••••" style="border:none; background:transparent; width:100%; padding: 0.75rem var(--gap); font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
                                                 </tbody>
                                             </table>
+                                            <span id="vault-status" style="display:none;"></span>
                                         </article>
                                     `, { html: true });
                                 }
