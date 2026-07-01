@@ -203,9 +203,9 @@ export default {
                             element(el) {
                                 el.setInnerContent(`
                                     <a href="/${targetId}/overview" data-id="overview" ${activeSection === 'overview' ? 'aria-current="page"' : ''}>Overview</a>
-                                    <a href="/${targetId}/extract" data-id="extract" ${activeSection === 'extract' ? 'aria-current="page"' : ''}>Sourcing (MLS)</a>
-                                    <a href="/${targetId}/transform" data-id="transform" ${activeSection === 'transform' ? 'aria-current="page"' : ''}>Smart Feeds (Keys)</a>
-                                    <a href="/${targetId}/load" data-id="load" ${activeSection === 'load' ? 'aria-current="page"' : ''}>Edge Storage (D1)</a>
+                                    <a href="/${targetId}/extract" data-id="extract" ${activeSection === 'extract' ? 'aria-current="page"' : ''}>Extract</a>
+                                    <a href="/${targetId}/transform" data-id="transform" ${activeSection === 'transform' ? 'aria-current="page"' : ''}>Transform</a>
+                                    <a href="/${targetId}/load" data-id="load" ${activeSection === 'load' ? 'aria-current="page"' : ''}>Load</a>
                                 `, { html: true });
                             }
                         })
@@ -261,7 +261,7 @@ export default {
                                     el.setInnerContent(`
                                         <div style="margin-bottom: 1.5rem;">
                                             <p style="font-size: 0.875rem; color: var(--text-muted); margin-bottom: 1.5rem;">
-                                                Configure <strong>Smart Feeds</strong> for your clients. Each API key can be tailored to specific locations and multiple MLS boards.
+                                                Configure data <strong>Transformations</strong> for your customers. Each API key can be tailored to specific locations and multiple MLS boards.
                                             </p>
                                             
                                             <table style="width: 100%; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;">
@@ -306,7 +306,7 @@ export default {
                                         </div>
 
                                         <div class="form-actions" style="padding-left: 0;">
-                                            <button id="btn-create-feed">Issue New Smart Feed Key</button>
+                                            <button id="btn-create-feed">Issue New Client Feed Key</button>
                                         </div>
                                     `, { html: true });
                                 }
