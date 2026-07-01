@@ -328,16 +328,16 @@ export default {
                                         <article data-full>
                                             <table>
                                                 <tbody>
-                                                    <tr><th style="width: 200px;">Board Name</th><td><input type="text" value="${targetEntity.name}" style="border:none; background:transparent; width:100%; font-size:inherit; color:inherit; outline:none;"></td></tr>
-                                                    <tr><th>Short Name</th><td><input type="text" value="${targetEntity.short_name}" style="border:none; background:transparent; width:100%; font-size:inherit; color:inherit; outline:none;"></td></tr>
-                                                    <tr><th>RESO API URL</th><td><input type="text" value="${targetEntity.reso_url}" style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
-                                                    <tr><th>Auth Endpoint</th><td><input type="text" id="vault-auth-endpoint" value="${targetEntity.auth_endpoint || ''}" placeholder="https://..." style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
-                                                    <tr><th>Client ID</th><td><input type="text" id="vault-client-id" value="${targetEntity.client_id || ''}" placeholder="ID..." style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
-                                                    <tr><th>Client Secret</th><td><input type="password" id="vault-client-secret" placeholder="••••••••" style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th style="width: 200px;">Board Name</th><td>${targetEntity.name}</td></tr>
+                                                    <tr><th>Short Name</th><td>${targetEntity.short_name}</td></tr>
+                                                    <tr><th>RESO API URL</th><td><input type="text" id="vault-reso-url" value="${targetEntity.reso_url}" class="vault-input" style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th>Auth Endpoint</th><td><input type="text" id="vault-auth-endpoint" value="${targetEntity.auth_endpoint || ''}" class="vault-input" placeholder="https://..." style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th>Client ID</th><td><input type="text" id="vault-client-id" value="${targetEntity.client_id || ''}" class="vault-input" placeholder="ID..." style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th>Client Secret</th><td><input type="password" id="vault-client-secret" class="vault-input" placeholder="••••••••" style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
                                                 </tbody>
                                             </table>
-                                            <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
-                                                <button id="btn-save-vault" style="background: var(--accent); border: none; padding: 0.5rem 1rem; border-radius: 4px; color: white; cursor: pointer; font-size: 0.8125rem;">Save Configuration</button>
+                                            <div style="margin-top: 1rem; text-align: right; font-size: 0.75rem; color: var(--text-muted); min-height: 1rem;">
+                                                <span id="vault-status"></span>
                                             </div>
                                         </article>
                                     `, { html: true });
