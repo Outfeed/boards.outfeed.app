@@ -328,11 +328,17 @@ export default {
                                         <article data-full>
                                             <table>
                                                 <tbody>
-                                                    <tr><th style="width: 200px;">Board Name</th><td>${targetEntity.name}</td></tr>
-                                                    <tr><th>Short Name</th><td>${targetEntity.short_name}</td></tr>
-                                                    <tr><th>RESO API URL</th><td style="font-family: var(--font-mono);">${targetEntity.reso_url}</td></tr>
+                                                    <tr><th style="width: 200px;">Board Name</th><td><input type="text" value="${targetEntity.name}" style="border:none; background:transparent; width:100%; font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th>Short Name</th><td><input type="text" value="${targetEntity.short_name}" style="border:none; background:transparent; width:100%; font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th>RESO API URL</th><td><input type="text" value="${targetEntity.reso_url}" style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th>Auth Endpoint</th><td><input type="text" id="vault-auth-endpoint" value="${targetEntity.auth_endpoint || ''}" placeholder="https://..." style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th>Client ID</th><td><input type="text" id="vault-client-id" value="${targetEntity.client_id || ''}" placeholder="ID..." style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
+                                                    <tr><th>Client Secret</th><td><input type="password" id="vault-client-secret" placeholder="••••••••" style="border:none; background:transparent; width:100%; font-family:var(--font-mono); font-size:inherit; color:inherit; outline:none;"></td></tr>
                                                 </tbody>
                                             </table>
+                                            <div style="margin-top: 2rem; display: flex; justify-content: flex-end;">
+                                                <button id="btn-save-vault" style="background: var(--accent); border: none; padding: 0.5rem 1rem; border-radius: 4px; color: white; cursor: pointer; font-size: 0.8125rem;">Save Configuration</button>
+                                            </div>
                                         </article>
                                     `, { html: true });
                                 }
@@ -342,26 +348,6 @@ export default {
                             element(el) {
                                 if (activeSection === 'extract') {
                                     el.setInnerContent(`
-                                        <div style="margin-bottom: 2rem; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;">
-                                            <div style="background: var(--bg-selected); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);">
-                                                <strong style="font-size: 0.875rem;">🔒 Vault Configuration</strong>
-                                            </div>
-                                            <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
-                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                                    <label><span>Auth Type</span><select id="vault-auth-type"><option value="oauth2">OAuth 2.0 (Trestle)</option><option value="basic">Basic Auth</option></select></label>
-                                                    <label><span>Token Endpoint</span><input type="text" id="vault-auth-endpoint" placeholder="https://trestle.corelogic.com/.../token"></label>
-                                                </div>
-                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                                                    <label><span>Client ID</span><input type="text" id="vault-client-id" placeholder="Your Client ID"></label>
-                                                    <label><span>Client Secret</span><input type="password" id="vault-client-secret" placeholder="••••••••••••••••"></label>
-                                                </div>
-                                                <div class="form-actions" style="padding: 0; margin-top: 0.5rem;">
-                                                    <button id="btn-save-vault" style="background: var(--accent); border-color: var(--accent);">Securely Store Credentials</button>
-                                                    <span id="vault-status" style="margin-left: 1rem; font-size: 0.875rem; color: var(--text-muted);"></span>
-                                                </div>
-                                            </div>
-                                        </div>
-
                                         <div class="form-actions" style="padding-left: 0;">
                                             <div class="form-actions-group">
                                                 <button id="btn-extract">Run Full Extraction Job</button>
