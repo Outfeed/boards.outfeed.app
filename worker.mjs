@@ -221,8 +221,8 @@ export default {
                         })
                         .on(`h2#ui-${activeSection}-title`, {
                             element(el) {
-                                const map = { overview: 'Overview', extract: 'Sourcing', transform: 'Feeds', load: 'Edge Storage' };
-                                el.setInnerContent(`${map[activeSection] || 'Overview'} ${targetEntity.name}`);
+                                const map = { overview: 'Overview', extract: 'Extract', transform: 'Transform', load: 'Load' };
+                                el.setInnerContent(`${map[activeSection] || 'Overview'}`);
                             }
                         })
                         .on('div#overview-content', {
