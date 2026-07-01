@@ -1,8 +1,80 @@
-
 import html from '../style/index.html';
 
-async function runExtraction(boardId, env) {
-    // 1. EXTRACT (Simulated RESO API fetch)
+// --- VAULT SECURITY HELPERS (AES-GCM) ---
+async function getMasterKey(secret) {
+    const enc = new TextEncoder();
+    const keyMaterial = await crypto.subtle.importKey("raw", enc.encode(secret), "PBKDF2", false, ["deriveKey"]);
+    return crypto.subtle.deriveKey(
+        { name: "PBKDF2", salt: enc.encode("outfeed-salt"), iterations: 100000, hash: "SHA-256" },
+        keyMaterial,
+        { name: "AES-GCM", length: 256 },
+        false,
+        ["encrypt", "decrypt"]
+    );
+}
+
+async function encryptSecret(text, masterKeySecret) {
+    const key = await getMasterKey(masterKeySecret);
+    const iv = crypto.getRandomValues(new Uint8Array(12));
+    const encoded = new TextEncoder().encode(text);
+    const encrypted = await crypto.subtle.encrypt({ name: "AES-GCM", iv }, key, encoded);
+    const combined = new Uint8Array(iv.length + encrypted.byteLength);
+    combined.set(iv);
+    combined.set(new Uint8Array(encrypted), iv.length);
+    return Array.from(combined).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function decryptSecret(hex, masterKeySecret) {
+    if (!hex) return null;
+    const key = await getMasterKey(masterKeySecret);
+    const combined = new Uint8Array(hex.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+    const iv = combined.slice(0, 12);
+    const data = combined.slice(12);
+    const decrypted = await crypto.subtle.decrypt({ name: "AES-GCM", iv }, key, data);
+    return new TextDecoder().decode(decrypted);
+}
+
+// --- ETL LOGIC ---
+async function runExtraction(env, boardId) {
+    console.log(`[ETL] Starting Extraction for Board: ${boardId}`);
+    
+    // 1. Fetch Board Config & Credentials from Vault
+    const board = await env.mls_data.prepare('SELECT * FROM boards WHERE id = ?').bind(boardId).first();
+    if (!board) throw new Error(`Board ${boardId} not found in registry`);
+
+    let accessToken = board.last_token;
+    
+    // 2. TOKEN MANAGEMENT: Check if we need a fresh OAuth token
+    const now = new Date();
+    const expires = board.token_expires_at ? new Date(board.token_expires_at) : new Date(0);
+
+    if (board.auth_type === 'oauth2' && board.client_id && (!accessToken || now >= expires)) {
+        console.log(`[ETL] Fetching fresh OAuth token for ${boardId}...`);
+        const clientSecret = await decryptSecret(board.encrypted_client_secret, env.BOARD_ENCRYPTION_KEY);
+        
+        const response = await fetch(board.auth_endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({
+                grant_type: 'client_credentials',
+                client_id: board.client_id,
+                client_secret: clientSecret,
+                scope: 'api'
+            })
+        });
+
+        if (!response.ok) throw new Error(`OAuth failed: ${await response.text()}`);
+        
+        const tokenData = await response.json();
+        accessToken = tokenData.access_token;
+        const newExpires = new Date(Date.now() + (tokenData.expires_in * 1000) - 60000); // 1 min buffer
+
+        // Cache the token
+        await env.mls_data.prepare('UPDATE boards SET last_token = ?, token_expires_at = ? WHERE id = ?')
+            .bind(accessToken, newExpires.toISOString(), boardId).run();
+    }
+
+    // 3. MOCK DATA (Fallback to Mock for now)
     const mockListings = [
         { id: `${boardId.toUpperCase()}-${Math.floor(Math.random() * 100000)}`, status: 'Active', price: 850000, address: '123 Spadina Ave', city: 'Toronto', bedrooms: 3, bathrooms: 2, sqft: 1500, agent_id: 'A123', office_id: 'O999', image_url: 'https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=800&q=80' },
         { id: `${boardId.toUpperCase()}-${Math.floor(Math.random() * 100000)}`, status: 'Pending', price: 620000, address: '456 King St W', city: 'Toronto', bedrooms: 2, bathrooms: 1, sqft: 900, agent_id: 'A456', office_id: 'O888', image_url: 'https://images.unsplash.com/photo-1568605114967-8130f3a36994?auto=format&fit=crop&w=800&q=80' },
@@ -134,6 +206,30 @@ export default {
             }
         }
 
+        // --- VAULT API: SAVE CREDENTIALS ---
+        if (url.pathname === '/api/vault/save' && request.method === 'POST') {
+            try {
+                const { boardId, authType, authEndpoint, clientId, clientSecret } = await request.json();
+                if (!boardId || !clientSecret) return Response.json({ success: false, error: 'Missing data' }, { status: 400 });
+
+                // Encrypt the secret using the master key
+                const encrypted = await encryptSecret(clientSecret, env.BOARD_ENCRYPTION_KEY);
+
+                await env.mls_data.prepare(`
+                    UPDATE boards SET 
+                        auth_type = ?, 
+                        auth_endpoint = ?, 
+                        client_id = ?, 
+                        encrypted_client_secret = ? 
+                    WHERE id = ?
+                `).bind(authType, authEndpoint, clientId, encrypted, boardId).run();
+
+                return Response.json({ success: true, message: 'Credentials securely vaulted' });
+            } catch (e) {
+                return Response.json({ success: false, error: e.message }, { status: 500 });
+            }
+        }
+
         if (action === 'run' && method === 'POST') {
             try {
                 const extractionResults = await runExtraction(reqBoardId, env);
@@ -246,9 +342,29 @@ export default {
                             element(el) {
                                 if (activeSection === 'extract') {
                                     el.setInnerContent(`
-                                        <div class="form-actions">
+                                        <div style="margin-bottom: 2rem; border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;">
+                                            <div style="background: var(--bg-selected); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border);">
+                                                <strong style="font-size: 0.875rem;">🔒 Vault Configuration</strong>
+                                            </div>
+                                            <div style="padding: 1rem; display: flex; flex-direction: column; gap: 1rem;">
+                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                                    <label><span>Auth Type</span><select id="vault-auth-type"><option value="oauth2">OAuth 2.0 (Trestle)</option><option value="basic">Basic Auth</option></select></label>
+                                                    <label><span>Token Endpoint</span><input type="text" id="vault-auth-endpoint" placeholder="https://trestle.corelogic.com/.../token"></label>
+                                                </div>
+                                                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                                    <label><span>Client ID</span><input type="text" id="vault-client-id" placeholder="Your Client ID"></label>
+                                                    <label><span>Client Secret</span><input type="password" id="vault-client-secret" placeholder="••••••••••••••••"></label>
+                                                </div>
+                                                <div class="form-actions" style="padding: 0; margin-top: 0.5rem;">
+                                                    <button id="btn-save-vault" style="background: var(--accent); border-color: var(--accent);">Securely Store Credentials</button>
+                                                    <span id="vault-status" style="margin-left: 1rem; font-size: 0.875rem; color: var(--text-muted);"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="form-actions" style="padding-left: 0;">
                                             <div class="form-actions-group">
-                                                <button id="btn-extract">Run Full Extraction</button>
+                                                <button id="btn-extract">Run Full Extraction Job</button>
                                             </div>
                                         </div>
                                     `, { html: true });

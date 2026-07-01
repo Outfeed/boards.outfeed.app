@@ -386,6 +386,42 @@
             }
 
             bindEvents() {
+                const btnSaveVault = document.getElementById('btn-save-vault');
+                if (btnSaveVault) {
+                    btnSaveVault.addEventListener('click', async () => {
+                        const statusEl = document.getElementById('vault-status');
+                        statusEl.textContent = 'Encrypting & Saving...';
+                        statusEl.style.color = 'var(--text-muted)';
+                        
+                        try {
+                            const res = await fetch('/api/vault/save', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    boardId: this.state.board,
+                                    authType: document.getElementById('vault-auth-type').value,
+                                    authEndpoint: document.getElementById('vault-auth-endpoint').value,
+                                    clientId: document.getElementById('vault-client-id').value,
+                                    clientSecret: document.getElementById('vault-client-secret').value
+                                })
+                            });
+                            
+                            const data = await res.json();
+                            if (data.success) {
+                                statusEl.textContent = '✅ Credentials Securely Vaulted';
+                                statusEl.style.color = 'green';
+                                document.getElementById('vault-client-secret').value = '';
+                            } else {
+                                statusEl.textContent = '❌ Error: ' + data.error;
+                                statusEl.style.color = 'red';
+                            }
+                        } catch (e) {
+                            statusEl.textContent = '❌ Connection Error';
+                            statusEl.style.color = 'red';
+                        }
+                    });
+                }
+
                 const btnExtract = document.getElementById('btn-extract');
                 if (btnExtract) {
                     btnExtract.addEventListener('click', async () => {

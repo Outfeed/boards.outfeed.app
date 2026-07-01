@@ -4,7 +4,13 @@ CREATE TABLE IF NOT EXISTS boards (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     short_name TEXT,
-    reso_url TEXT
+    reso_url TEXT,
+    auth_type TEXT DEFAULT 'oauth2', -- oauth2, basic, bearer
+    auth_endpoint TEXT, -- The token/auth URL
+    client_id TEXT,
+    encrypted_client_secret TEXT,
+    last_token TEXT, -- Cached Bearer Token
+    token_expires_at DATETIME
 );
 
 -- Active Clients
